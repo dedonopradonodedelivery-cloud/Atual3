@@ -8,7 +8,6 @@ import { StatusView } from './components/StatusView';
 import { MarketplaceView } from './components/MarketplaceView';
 import { CategoryView } from './components/CategoryView';
 import { AuthModal } from './components/AuthModal';
-import { QuickRegister } from './components/QuickRegister';
 import { MapPin, Crown } from 'lucide-react';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -97,7 +96,7 @@ const App: React.FC = () => {
   // View: Quick Register (Forces user to complete profile if needed)
   if (user && needsProfileSetup) {
       return (
-          <QuickRegister user={user} onComplete={handleProfileComplete} />
+          {/* QuickRegister temporariamente desativado */}
       );
   }
 
