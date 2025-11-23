@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase";
+import { supabase } from "./supabaseClient"; // <--- IMPORTANTE
 
 type AuthContextType = {
   user: User | null;
@@ -18,9 +19,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Escuta mudanças de login do Firebase (login, logout, refresh)
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
+
+      if (firebaseUser) {
+        // ==============================
+        // 🔥 Sincronizar com Supabase
+        // ==============================
+        await supabase
+          .from("profiles")
+          .upsert(
+            {
+              firebase_uid: firebaseUser.uid,
+              nome: firebaseUser.displayName || null,
+              avatar_url: firebaseUser.photoURL || null,
+              telefone: firebaseUser.phoneNumber || null,
+            },
+            { onConflict: "firebase_uid" }
+          );
+      }
+
       setLoading(false);
     });
 
@@ -40,7 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider value={value}>
-      {/* Pode mostrar um splash simples enquanto carrega o estado de login */}
       {loading ? (
         <div
           style={{
@@ -48,7 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+            fontFamily:
+              "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
           }}
         >
           Carregando...
