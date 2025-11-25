@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Utensils, Briefcase, PartyPopper, Shirt, Coffee, Home, Dog, Armchair, Scissors, Heart, GraduationCap, Settings, Dumbbell, CarFront, Wrench, Sun, ShoppingCart, Croissant, Leaf, Beef, Fish, Bike, Beer, Sandwich, ShoppingBag, Sparkles, MapPin, Hand, Feather, Eye, Stethoscope, Smile, Brain, Activity, Apple, FlaskConical, HelpingHand, School, Languages, BookOpen, Baby, Target, Zap, Droplet, BrickWall, PaintRoller, Hammer, Wind, Key, Plug, Scale, Calculator, Ruler, Megaphone, Camera, Printer, Bone, Footprints, Flame, Swords, Trophy, Waves, Music, UserCheck, Tv, Smartphone, Laptop, Cpu, Snowflake, FileText, CircleDashed, Lock, Wallet, Gem, Watch, Moon, ShieldCheck, Package, Building2, Pill, Lightbulb, Palette } from 'lucide-react';
-import { AdType, Category, Store, Story, ServiceLead, Channel } from './types';
+import { AdType, Category, Store, Story, ServiceLead, Channel, Transaction } from './types';
 
 export const CATEGORIES: Category[] = [
   { id: '1', name: 'Alimentação', slug: 'food', icon: <Utensils className="w-6 h-6 text-primary-500" /> },
@@ -213,7 +213,20 @@ export const STORES: Store[] = [
     description: 'A maior variedade de grãos e especiarias da Freguesia.',
     cashback: 5,
     isMarketplace: true,
-    price: 49.90
+    price: 49.90,
+    verified: true,
+    address: "Estrada dos Três Rios, 1200 - Freguesia",
+    phone: "(21) 2444-5555",
+    hours: "Seg à Sáb: 08h às 20h",
+    gallery: [
+      'https://picsum.photos/600/400?random=100',
+      'https://picsum.photos/600/400?random=101',
+      'https://picsum.photos/600/400?random=102',
+    ],
+    reviews: [
+      { id: 'r1', user: 'Maria S.', rating: 5, text: 'Melhor loja de produtos naturais!', date: 'Há 2 dias' },
+      { id: 'r2', user: 'João P.', rating: 4, text: 'Ótimo atendimento.', date: 'Há 1 semana' },
+    ]
   },
   {
     id: 'premium-2',
@@ -226,7 +239,11 @@ export const STORES: Store[] = [
     description: 'O melhor burger artesanal do bairro.',
     cashback: 3,
     isMarketplace: true,
-    price: 32.50
+    price: 32.50,
+    verified: true,
+    address: "Rua Araguaia, 450",
+    phone: "(21) 99999-8888",
+    hours: "Ter à Dom: 18h às 23h"
   },
   {
     id: 'local-1',
@@ -239,7 +256,8 @@ export const STORES: Store[] = [
     description: 'Óculos de sol e grau com preço justo.',
     cashback: 2,
     isMarketplace: true,
-    price: 199.00
+    price: 199.00,
+    address: "Estrada de Jacarepaguá, 7600"
   },
   {
     id: 'organic-1',
@@ -270,4 +288,11 @@ export const LEADS: ServiceLead[] = [
   { id: '1', title: 'Instalação de Ar Condicionado', category: 'Climatização', urgency: 'Alta', priceToUnlock: 3.90, maskedName: 'Carlos M.', district: 'Freguesia' },
   { id: '2', title: 'Bolo de Aniversário (3kg)', category: 'Festas', urgency: 'Média', priceToUnlock: 3.90, maskedName: 'Ana P.', district: 'Pechincha' },
   { id: '3', title: 'Troca de Fiação Elétrica', category: 'Eletricista', urgency: 'Alta', priceToUnlock: 3.90, maskedName: 'Roberto S.', district: 'Freguesia' },
+];
+
+export const TRANSACTIONS: Transaction[] = [
+  { id: 't1', storeName: 'Casas Pedro', date: '20 Out 2023', amount: 150.00, cashbackAmount: 7.50, status: 'completed' },
+  { id: 't2', storeName: 'Hamburgueria Brasa', date: '18 Out 2023', amount: 85.00, cashbackAmount: 2.55, status: 'completed' },
+  { id: 't3', storeName: 'Ótica Visão', date: '10 Out 2023', amount: 400.00, cashbackAmount: 8.00, status: 'pending' },
+  { id: 't4', storeName: 'Padaria Estrela', date: '05 Out 2023', amount: 25.00, cashbackAmount: 0.00, status: 'completed' }, // No cashback example
 ];

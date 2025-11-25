@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Header } from './components/Header';
@@ -7,11 +6,15 @@ import { ExploreView } from './components/ExploreView';
 import { StatusView } from './components/StatusView';
 import { MarketplaceView } from './components/MarketplaceView';
 import { CategoryView } from './components/CategoryView';
+import { StoreDetailView } from './components/StoreDetailView';
+import { CashbackView } from './components/CashbackView';
 import { AuthModal } from './components/AuthModal';
+import { QuickRegister } from './components/QuickRegister';
+import { MenuView } from './components/MenuView';
 import { MapPin, Crown } from 'lucide-react';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { Category } from './types';
+import { Category, Store } from './types';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -23,8 +26,9 @@ const App: React.FC = () => {
   // Logic to show registration screen (simulated for now)
   const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
   
-  // State for handling selected category view
+  // State for handling selected category/store view
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
@@ -52,6 +56,12 @@ const App: React.FC = () => {
   const handleSelectCategory = (category: Category) => {
       setSelectedCategory(category);
       setActiveTab('category_detail');
+  };
+
+  // Handle Store Selection
+  const handleSelectStore = (store: Store) => {
+      setSelectedStore(store);
+      setActiveTab('store_detail');
   };
 
   const handleProfileComplete = () => {
@@ -96,7 +106,7 @@ const App: React.FC = () => {
   // View: Quick Register (Forces user to complete profile if needed)
   if (user && needsProfileSetup) {
       return (
-          {/* QuickRegister temporariamente desativado */}
+          <QuickRegister user={user} onComplete={handleProfileComplete} />
       );
   }
 
@@ -106,7 +116,7 @@ const App: React.FC = () => {
         
         <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
           {/* Only show Header if NOT in specific detail views that have their own headers */}
-          {activeTab !== 'category_detail' && (
+          {!['category_detail', 'store_detail', 'cashback', 'menu'].includes(activeTab) && (
               <Header 
                 isDarkMode={isDarkMode} 
                 toggleTheme={toggleTheme}
@@ -119,10 +129,19 @@ const App: React.FC = () => {
             {activeTab === 'home' && (
                 <HomeFeed 
                     onNavigate={setActiveTab} 
-                    onSelectCategory={handleSelectCategory} 
+                    onSelectCategory={handleSelectCategory}
+                    onStoreClick={handleSelectStore} 
                 />
             )}
-            {activeTab === 'explore' && <ExploreView />}
+            
+            {activeTab === 'explore' && (
+                <ExploreView 
+                    onSelectCategory={handleSelectCategory}
+                    onNavigate={setActiveTab}
+                    onStoreClick={handleSelectStore}
+                />
+            )}
+
             {activeTab === 'status' && <StatusView />}
             {activeTab === 'marketplace' && <MarketplaceView onBack={() => setActiveTab('home')} />}
             
@@ -130,22 +149,30 @@ const App: React.FC = () => {
             {activeTab === 'category_detail' && selectedCategory && (
                 <CategoryView 
                     category={selectedCategory} 
-                    onBack={() => setActiveTab('home')} 
+                    onBack={() => setActiveTab('home')}
+                    onStoreClick={handleSelectStore}
                 />
             )}
 
+            {/* New Store Detail View */}
+            {activeTab === 'store_detail' && selectedStore && (
+                <StoreDetailView 
+                    store={selectedStore} 
+                    onBack={() => setActiveTab('home')}
+                    onOpenCashback={() => setActiveTab('cashback')}
+                />
+            )}
+
+            {/* New Cashback View */}
+            {activeTab === 'cashback' && (
+                <CashbackView onBack={() => setActiveTab('home')} />
+            )}
+
             {activeTab === 'menu' && (
-                <div className="p-10 flex flex-col items-center justify-center text-center h-[60vh] text-gray-400 dark:text-gray-500">
-                    <div className="mb-4 text-6xl">🚧</div>
-                    <h2 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">Em Construção</h2>
-                    <p className="text-sm">Acesse "Explorar" para ver a Área do Profissional ou "Início" para as lojas.</p>
-                    <button 
-                        onClick={() => setActiveTab('home')}
-                        className="mt-6 px-6 py-2 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-full font-medium text-sm"
-                    >
-                        Voltar ao Início
-                    </button>
-                </div>
+                <MenuView 
+                    user={user} 
+                    onAuthClick={() => setIsAuthOpen(true)} 
+                />
             )}
           </main>
           <AuthModal 

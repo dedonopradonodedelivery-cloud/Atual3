@@ -6,6 +6,14 @@ export enum AdType {
   PREMIUM = 'PREMIUM' // R$ 3.90/dia - Top of list
 }
 
+export interface StoreReview {
+  id: string;
+  user: string;
+  rating: number;
+  text: string;
+  date: string;
+}
+
 export interface Store {
   id: string;
   name: string;
@@ -18,6 +26,14 @@ export interface Store {
   cashback?: number; // Percentage
   isMarketplace?: boolean; // Determines if it appears in "Achadinhos"
   price?: number; // Price for the "Achadinho" item/deal
+  
+  // Detailed fields
+  address?: string;
+  phone?: string;
+  hours?: string;
+  gallery?: string[];
+  reviews?: StoreReview[];
+  verified?: boolean;
 }
 
 export interface Category {
@@ -56,4 +72,13 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   isLoading?: boolean;
+}
+
+export interface Transaction {
+  id: string;
+  storeName: string;
+  date: string;
+  amount: number;
+  cashbackAmount: number;
+  status: 'completed' | 'pending';
 }

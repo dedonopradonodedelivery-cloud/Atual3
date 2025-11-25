@@ -1,19 +1,52 @@
-import React, { useState } from 'react';
-import { CATEGORIES, STORES } from '../constants';
-import { AdType, Category } from '../types';
-import { BadgeCheck, TrendingUp, Star, Search, X, Eye, EyeOff, ChevronRight, Coins, ShoppingBag, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CATEGORIES, STORES, SUBCATEGORIES } from '../constants';
+import { AdType, Category, Store } from '../types';
+import { BadgeCheck, TrendingUp, Star, Search, X, Eye, EyeOff, ChevronRight, Coins, ShoppingBag, Sparkles, Briefcase, Percent } from 'lucide-react';
+import { QuoteRequestModal } from './QuoteRequestModal';
 
 interface HomeFeedProps {
   onNavigate: (view: string) => void;
   onSelectCategory: (category: Category) => void;
+  onStoreClick?: (store: Store) => void;
+  initialSearch?: string;
 }
 
-export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+// Banners from Supabase Storage
+const SUPABASE_BANNERS = [
+  'https://nyneuuvcdmtqjyaqrztz.supabase.co/storage/v1/object/public/Banners%20Home/Banner%20Casa%20Pedro.jpg',
+  'https://nyneuuvcdmtqjyaqrztz.supabase.co/storage/v1/object/public/Banners%20Home/Banner%20Esquematiza.png',
+  'https://nyneuuvcdmtqjyaqrztz.supabase.co/storage/v1/object/public/Banners%20Home/drogasmil-freguesia.jpg',
+  'https://nyneuuvcdmtqjyaqrztz.supabase.co/storage/v1/object/public/Banners%20Home/Rio%20Phone%20Store%20-%20Novo%20Design.png'
+];
+
+export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory, onStoreClick, initialSearch }) => {
+  const [searchTerm, setSearchTerm] = useState(initialSearch || '');
   const [showBalance, setShowBalance] = useState(true);
-  const [displayCount, setDisplayCount] = useState(10); // Infinite scroll limit
+  const [displayCount, setDisplayCount] = useState(10);
   
-  // Helper to remove accents and lowercase text for better matching
+  // Carousel State
+  const [banners, setBanners] = useState<string[]>([]);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [selectedQuoteNiche, setSelectedQuoteNiche] = useState('');
+  
+  // Initialize and Shuffle Banners on Mount
+  useEffect(() => {
+    // Shuffle the array to show random order on each load
+    const shuffled = [...SUPABASE_BANNERS].sort(() => 0.5 - Math.random());
+    setBanners(shuffled);
+  }, []);
+
+  // Banner Rotation Timer (4 Seconds)
+  useEffect(() => {
+    if (banners.length === 0) return;
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [banners]);
+  
   const normalizeText = (text: string) => {
     return text
       .normalize("NFD")
@@ -21,7 +54,6 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
       .toLowerCase();
   };
 
-  // Filter stores based on search term
   const filteredStores = STORES.filter((store) => {
     const term = normalizeText(searchTerm);
     const name = normalizeText(store.name);
@@ -35,18 +67,14 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
     );
   });
 
-  // Sort stores to prioritize PREMIUM -> LOCAL -> ORGANIC
   const sortedStores = filteredStores.sort((a, b) => {
     const priority = { [AdType.PREMIUM]: 3, [AdType.LOCAL]: 2, [AdType.ORGANIC]: 1 };
     return priority[b.adType] - priority[a.adType];
   });
 
-  // Infinite Scroll Logic (Simulated)
   const visibleStores = React.useMemo(() => {
-     // If searching, show everything. If not, slice based on infinite scroll
      if (searchTerm) return sortedStores;
      
-     // Mock infinite scroll by repeating items if we run out of real ones
      const items = [];
      for (let i = 0; i < displayCount; i++) {
         items.push(sortedStores[i % sortedStores.length]);
@@ -54,16 +82,14 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
      return items;
   }, [sortedStores, displayCount, searchTerm]);
 
-  // Intersection Observer for loading more
   const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    if (searchTerm) return; // Disable infinite scroll during search
+    if (searchTerm) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          // Load more items
           setTimeout(() => {
              setDisplayCount((prev) => prev + 5);
           }, 500);
@@ -79,9 +105,23 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
     return () => observer.disconnect();
   }, [searchTerm]);
 
-
-  // Filter for "Achadinhos" (Marketplace enabled stores)
   const marketplaceStores = STORES.filter(s => s.isMarketplace);
+  const cashbackStores = STORES.filter(s => s.cashback && s.cashback > 0);
+
+  const serviceNiches = React.useMemo(() => {
+    const list = [
+      ...(SUBCATEGORIES['Serviços'] || []),
+      ...(SUBCATEGORIES['Profissionais'] || []),
+      ...(SUBCATEGORIES['Assistências'] || []),
+      ...(SUBCATEGORIES['Casa'] || []),
+    ];
+    return Array.from(new Map(list.map(item => [item.name, item])).values());
+  }, []);
+
+  const handleOpenQuote = (nicheName: string) => {
+    setSelectedQuoteNiche(nicheName);
+    setIsQuoteModalOpen(true);
+  };
 
   return (
     <div className="flex flex-col gap-6 pt-4">
@@ -110,58 +150,80 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
         </div>
       </div>
 
-      {/* Categories (Always visible, unless hidden on search preference) */}
+      {/* Categories */}
       {!searchTerm && (
         <div className="w-full pl-5">
-            {/* Horizontal Scrolling Grid - 2 Rows */}
             <div className="grid grid-rows-2 grid-flow-col auto-cols-max gap-x-4 gap-y-6 overflow-x-auto pb-2 pr-5 no-scrollbar w-full touch-pan-x">
+
             {CATEGORIES.map((cat) => (
-                <div 
-                  key={cat.id} 
-                  className="w-[72px] flex flex-col items-center gap-2 cursor-pointer group"
-                  onClick={() => onSelectCategory(cat)}
-                >
-                <div className="w-[70px] h-[70px] bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center group-hover:shadow-md group-hover:border-primary-200 transition-all flex-shrink-0">
+              <div 
+                key={cat.id} 
+                className="w-[68px] flex flex-col items-center cursor-pointer group"
+                onClick={() => onSelectCategory(cat)}
+              >
+                <div className="w-[68px] h-[66px] bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center p-1 flex-shrink-0 gap-1 group-hover:shadow-md group-hover:border-primary-200 transition-all">
+                  
+                  <div className="text-primary-500 dark:text-primary-400 text-[18px] mb-[2px]">
                     {cat.icon}
+                  </div>
+
+                  <span className="text-[9px] text-gray-600 dark:text-gray-300 text-center leading-tight break-words max-w-[60px] mt-[2px]">
+                    {cat.name}
+                  </span>
                 </div>
-                <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400 text-center leading-tight line-clamp-2 w-full">{cat.name}</span>
-                </div>
+              </div>
             ))}
+
             </div>
         </div>
       )}
 
-      {/* Featured & Cashback & Achadinhos (Hidden on Search) */}
+      {/* Featured / Cashback / Achadinhos */}
       {!searchTerm && (
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Banner Destaque */}
+
+            {/* Banner Destaque (Carousel) */}
             <div className="px-5">
-                <div className="w-full h-48 rounded-3xl overflow-hidden relative shadow-lg group cursor-pointer">
-                    <img 
-                        src="https://picsum.photos/600/300?random=99" 
-                        alt="Featured Store" 
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-6">
-                        <div className="bg-primary-500 w-fit px-3 py-1 rounded-full text-[10px] text-white font-bold mb-2 uppercase tracking-wider shadow-sm">
-                            Destaque da Semana
+                <div className="w-full h-48 rounded-3xl overflow-hidden relative shadow-lg group cursor-pointer bg-gray-100 dark:bg-gray-800">
+                    
+                    {banners.length > 0 ? (
+                      banners.map((bannerUrl, index) => (
+                        <div 
+                          key={index}
+                          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                            index === currentBannerIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                          }`}
+                          onClick={() => onStoreClick && onStoreClick(STORES[0])} // Using first store as dummy link for now
+                        >
+                           <img 
+                              src={bannerUrl} 
+                              alt={`Banner ${index + 1}`} 
+                              className="w-full h-full object-cover" 
+                           />
                         </div>
-                        <h2 className="text-white text-2xl font-bold font-display mb-1">Casas Pedro</h2>
-                        <p className="text-gray-200 text-sm line-clamp-1">O maior empório de grãos da Freguesia.</p>
-                    </div>
-                    {/* Carousel Dots */}
-                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1">
-                        <div className="w-6 h-1 bg-white rounded-full"></div>
-                        <div className="w-1 h-1 bg-white/50 rounded-full"></div>
-                        <div className="w-1 h-1 bg-white/50 rounded-full"></div>
+                      ))
+                    ) : (
+                      // Fallback skeleton
+                      <div className="w-full h-full bg-gray-200 animate-pulse"></div>
+                    )}
+
+                    {/* Indicators */}
+                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-20">
+                        {banners.map((_, idx) => (
+                           <div 
+                             key={idx}
+                             className={`h-1.5 rounded-full transition-all duration-300 ${
+                               idx === currentBannerIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50'
+                             }`}
+                           ></div>
+                        ))}
                     </div>
                 </div>
             </div>
 
             {/* Cashback Mini Banner */}
             <div className="px-5">
-                <div className="bg-gray-900 rounded-2xl p-4 flex items-center justify-between shadow-lg border border-yellow-500/30 relative overflow-hidden">
-                    {/* Decorative Gold Glow */}
+                <div onClick={() => onNavigate('cashback')} className="bg-gray-900 rounded-2xl p-4 flex items-center justify-between shadow-lg border border-yellow-500/30 relative overflow-hidden cursor-pointer active:scale-[0.98] transition-transform">
                     <div className="absolute -left-6 -top-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-2xl pointer-events-none"></div>
 
                     <div className="flex items-center gap-3 z-10">
@@ -175,7 +237,7 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
                                     {showBalance ? 'R$ 54,90' : '••••••'}
                                 </span>
                                 <button 
-                                    onClick={() => setShowBalance(!showBalance)} 
+                                    onClick={(e) => { e.stopPropagation(); setShowBalance(!showBalance); }} 
                                     className="text-gray-500 hover:text-white transition-colors"
                                 >
                                     {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -191,7 +253,47 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
                 </div>
             </div>
 
-            {/* Achadinhos da Freguesia (Marketplace Carousel) */}
+            {/* Cashback Stores */}
+            <div className="pl-5">
+                <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                        <Percent className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">
+                        Lojas que já participam do Cashback
+                    </h3>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-4 pr-5 no-scrollbar">
+                    {cashbackStores.map((store) => (
+                        <div
+                            key={store.id}
+                            onClick={() => onStoreClick && onStoreClick(store)}
+                            className="min-w-[120px] w-[120px] flex flex-col gap-1.5 group cursor-pointer"
+                        >
+                            <div className="w-full h-[80px] rounded-xl overflow-hidden relative shadow-sm border border-gray-100 dark:border-gray-700">
+                                <img
+                                    src={store.image}
+                                    alt={store.name}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                />
+                                <div className="absolute top-1 right-1 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                    {store.cashback}%
+                                </div>
+                            </div>
+                            <div className="px-0.5">
+                                <h4 className="text-[11px] font-bold text-gray-800 dark:text-white line-clamp-1 leading-tight">
+                                    {store.name}
+                                </h4>
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500 line-clamp-1 mt-0.5">
+                                    {store.category}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Achadinhos */}
             <div className="pl-5">
                 <div className="flex items-center gap-2 mb-3">
                     <Sparkles className="w-5 h-5 text-purple-500 fill-purple-100 dark:fill-purple-900" />
@@ -199,14 +301,12 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
                 </div>
                 <div className="flex gap-4 overflow-x-auto pb-4 pr-5 no-scrollbar">
                     {marketplaceStores.map((store) => (
-                        <div key={store.id} className="min-w-[140px] w-[140px] flex flex-col gap-2 group cursor-pointer">
+                        <div key={store.id} onClick={() => onStoreClick && onStoreClick(store)} className="min-w-[140px] w-[140px] flex flex-col gap-2 group cursor-pointer">
                             <div className="w-full h-40 rounded-2xl overflow-hidden relative shadow-sm border border-gray-100 dark:border-gray-700 group-hover:shadow-md transition-all">
                                 <img src={store.image} alt={store.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                {/* Tag Badge */}
                                 <div className="absolute top-2 left-2 bg-white/90 dark:bg-black/60 backdrop-blur-sm p-1.5 rounded-lg shadow-sm">
                                     <ShoppingBag className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                                 </div>
-                                {/* Bottom Gradient */}
                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent h-12"></div>
                             </div>
                             <div>
@@ -217,7 +317,6 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
                             </div>
                         </div>
                     ))}
-                    {/* View All Card - Clickable to navigate */}
                     <div 
                       onClick={() => onNavigate('marketplace')}
                       className="min-w-[100px] flex flex-col items-center justify-center gap-2 cursor-pointer pr-4 group"
@@ -229,10 +328,56 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
                     </div>
                 </div>
             </div>
+
+            {/* Solicite um orçamento */}
+            <div className="px-5 mt-4">
+              <div className="bg-gray-50 dark:bg-gray-800/40 rounded-3xl p-6 border border-gray-100 dark:border-gray-700/50">
+                  
+                  {/* Header do Bloco */}
+                  <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 shadow-sm">
+                         <Briefcase className="w-5 h-5" />
+                      </div>
+                      <div>
+                          <h3 className="font-bold text-lg text-gray-900 dark:text-white leading-tight">Solicite um orçamento</h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              Receba propostas de profissionais verificados da região.
+                          </p>
+                      </div>
+                  </div>
+
+                  {/* Carrossel de Cards */}
+                  <div className="flex gap-3 overflow-x-auto no-scrollbar pt-4 pb-2 -mx-2 px-2">
+                      {serviceNiches.slice(0, 10).map((service, idx) => (
+                          <button 
+                              key={idx}
+                              onClick={() => handleOpenQuote(service.name)}
+                              className="min-w-[100px] h-[110px] bg-white dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-sm flex flex-col items-center justify-center gap-3 p-3 transition-all hover:shadow-md hover:scale-[1.02] hover:border-blue-300 dark:hover:border-blue-500 active:scale-95 group"
+                          >
+                              <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-gray-800 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                                  {service.icon}
+                              </div>
+                              <span className="text-[11px] font-bold text-center text-gray-700 dark:text-gray-200 line-clamp-2 leading-tight px-1">
+                                  {service.name}
+                              </span>
+                          </button>
+                      ))}
+                      
+                      {/* Botão Ver Mais */}
+                      <button className="min-w-[80px] h-[110px] flex flex-col items-center justify-center gap-2 group">
+                           <div className="w-10 h-10 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-400 group-hover:text-primary-500 group-hover:border-primary-200 transition-all shadow-sm">
+                               <ChevronRight className="w-5 h-5" />
+                           </div>
+                           <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 group-hover:text-primary-500 transition-colors">Ver mais</span>
+                      </button>
+                  </div>
+              </div>
+            </div>
+
         </div>
       )}
 
-      {/* Business List / Feed with Infinite Scroll */}
+      {/* Store List */}
       <div className="px-5 pb-4 min-h-[300px]">
         <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-lg text-gray-800 dark:text-white">
@@ -244,9 +389,11 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
         {visibleStores.length > 0 ? (
           <div className="flex flex-col gap-4">
             {visibleStores.map((store, index) => (
-              // Added index to key because we are duplicating items for infinite scroll simulation
-              <div key={`${store.id}-${index}`} className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-gray-700 flex gap-4 hover:shadow-md transition-all cursor-pointer relative overflow-hidden">
-                {/* Premium Visual Indicator */}
+              <div 
+                key={`${store.id}-${index}`} 
+                onClick={() => onStoreClick && onStoreClick(store)}
+                className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-gray-700 flex gap-4 hover:shadow-md transition-all cursor-pointer relative overflow-hidden"
+              >
                 {store.adType === AdType.PREMIUM && (
                     <div className="absolute top-0 right-0 bg-gradient-to-bl from-primary-500 to-orange-400 text-white text-[9px] font-bold px-3 py-1 rounded-bl-xl z-10">
                         PATROCINADO
@@ -285,7 +432,6 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
                 </div>
               </div>
             ))}
-            {/* Loader element for infinite scroll */}
             {!searchTerm && (
                 <div ref={loadMoreRef} className="h-20 flex items-center justify-center w-full text-gray-400 text-xs animate-pulse">
                     Carregando mais lojas...
@@ -305,6 +451,12 @@ export const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate, onSelectCategory
           </div>
         )}
       </div>
+
+      <QuoteRequestModal 
+        isOpen={isQuoteModalOpen} 
+        onClose={() => setIsQuoteModalOpen(false)} 
+        categoryName={selectedQuoteNiche} 
+      />
     </div>
   );
 };
