@@ -1,14 +1,14 @@
 // lib/supabase.ts
 import { createClient } from '@supabase/supabase-js';
 
-// ⚠️ Opção A — usar ENV quando existir, senão usar o valor real como fallback
+// Usa ENV se existir, senão usa os valores reais como fallback
 const supabaseUrl =
-  (import.meta as any).env.VITE_SUPABASE_URL ??
+  (import.meta as any).env?.VITE_SUPABASE_URL ??
   'https://nyneuuvcdmtqjyaqrztz.supabase.co';
 
 const supabaseAnonKey =
-  (import.meta as any).env.VITE_SUPABASE_ANON_KEY ??
-  'SUA_ANON_KEY_AQUI'; // cole aqui a mesma anon key que você usou na Vercel / Supabase
+  (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ??
+  'sb_publishable_AvXDj4U1pRJP-8PxMxRpvQ_RIbDcA-W';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('[APP] Supabase env vars missing', {
@@ -17,4 +17,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
   });
 }
 
+// Cria o client Supabase que o app inteiro vai usar
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
